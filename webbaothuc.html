@@ -147,6 +147,7 @@
         const alarmSound = document.getElementById("alarmSound");
 
         let alarmTime = null;
+        let isAlarmPlaying = false;
 
         // Tự động tạo danh sách Giờ (1-12) và Phút (00-59)
         for (let i = 12; i > 0; i--) {
@@ -183,12 +184,14 @@
             currentTimeTime.innerText = timeString;
 
             // Kiểm tra nếu đến giờ báo thức
-            if (alarmTime === `${h}:${m} ${ampm}`) {
+            if (alarmTime === `${h}:${m} ${ampm}` && s === "00" && !isAlarmPlaying) {
+                isAlarmPlaying = true;
                 alarmSound.play().catch(error => {
                     console.log("Trình duyệt chặn tự động phát âm thanh. Cần tương tác trước.");
                 });
                 alarmStatus.innerText = "⏰ DẬY THÔI NÀO!!! ⏰";
                 alarmStatus.style.color = "#e74c3c";
+                clearAlarmBtn.innerText = "Dừng Chuông";
             }
         }, 1000);
 
@@ -201,6 +204,7 @@
             }
 
             alarmTime = `${hourSelect.value}:${minuteSelect.value} ${ampmSelect.value}`;
+            isAlarmPlaying = false;
             
             // Ẩn/Hiện giao diện phù hợp
             hourSelect.disabled = true;
@@ -208,14 +212,17 @@
             ampmSelect.disabled = true;
             setAlarmBtn.style.display = "none";
             clearAlarmBtn.style.display = "block";
+            clearAlarmBtn.innerText = "Tắt Báo Thức";
             
             alarmStatus.innerText = `Đã hẹn giờ lúc: ${alarmTime}`;
             alarmStatus.style.color = "#2ecc71";
+            
         });
 
         // Xử lý nút Tắt báo thức
         clearAlarmBtn.addEventListener("click", () => {
             alarmTime = null;
+            isAlarmPlaying = false;
             alarmSound.pause();
             alarmSound.currentTime = 0; // Reset âm thanh về đầu
 
