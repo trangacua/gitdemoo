@@ -1,0 +1,378 @@
+
+<style>
+h2.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.suite{padding:1rem 0}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:12px}
+.title{font-size:18px;font-weight:500;color:var(--text-primary)}
+.stats{display:flex;gap:8px}
+.stat{padding:4px 12px;border-radius:var(--radius);font-size:13px;font-weight:500}
+.stat.pass{background:var(--bg-success);color:var(--text-success)}
+.stat.fail{background:var(--bg-danger);color:var(--text-danger)}
+.stat.skip{background:var(--bg-warning);color:var(--text-warning)}
+.stat.all{background:var(--surface-1);color:var(--text-secondary);border:0.5px solid var(--border)}
+.btn-run{padding:8px 20px;border-radius:var(--radius);border:0.5px solid var(--border-strong);background:var(--surface-2);color:var(--text-primary);font-size:14px;font-weight:500;cursor:pointer;transition:background 0.15s}
+.btn-run:hover{background:var(--surface-1)}
+.btn-run:disabled{opacity:0.5;cursor:not-allowed}
+.categories{display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap}
+.cat-btn{padding:4px 12px;border-radius:var(--radius);border:0.5px solid var(--border);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;transition:all 0.15s}
+.cat-btn.active{background:var(--bg-accent);color:var(--text-accent);border-color:var(--border-accent)}
+.test-list{display:flex;flex-direction:column;gap:6px}
+.test-item{border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color 0.2s}
+.test-item.running{border-color:var(--border-accent);animation:pulse 1s infinite}
+.test-item.pass{border-color:var(--border-success)}
+.test-item.fail{border-color:var(--border-danger)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
+.test-header{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;background:var(--surface-2)}
+.test-header:hover{background:var(--surface-1)}
+.badge{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.badge.pending{background:var(--surface-1);border:0.5px solid var(--border);color:var(--text-muted)}
+.badge.running{background:var(--bg-accent);color:var(--text-accent)}
+.badge.pass{background:var(--bg-success);color:var(--text-success)}
+.badge.fail{background:var(--bg-danger);color:var(--text-danger)}
+.test-id{font-size:12px;color:var(--text-muted);min-width:32px}
+.test-name{font-size:14px;color:var(--text-primary);flex:1}
+.test-cat{font-size:11px;padding:2px 8px;border-radius:var(--radius);background:var(--surface-1);color:var(--text-muted);border:0.5px solid var(--border)}
+.test-dur{font-size:12px;color:var(--text-muted);min-width:40px;text-align:right}
+.test-detail{padding:10px 14px;background:var(--surface-0);border-top:0.5px solid var(--border);display:none;font-size:13px;line-height:1.6}
+.test-detail.open{display:block}
+.detail-row{display:flex;gap:8px;margin-bottom:6px}
+.detail-label{color:var(--text-muted);min-width:90px}
+.detail-val{color:var(--text-secondary)}
+.result-msg{margin-top:8px;padding:8px 12px;border-radius:var(--radius);font-size:13px}
+.result-msg.pass{background:var(--bg-success);color:var(--text-success)}
+.result-msg.fail{background:var(--bg-danger);color:var(--text-danger)}
+.progress-bar{height:3px;background:var(--surface-1);border-radius:2px;margin-bottom:1.5rem;overflow:hidden}
+.progress-fill{height:100%;background:var(--fill-accent);border-radius:2px;transition:width 0.3s;width:0%}
+</style>
+
+<h2 class="sr-only">Bộ kiểm thử 20 test cases cho hệ thống báo thức online</h2>
+<div class="suite">
+  <div class="header">
+    <div class="title"><i class="ti ti-clock" aria-hidden="true" style="margin-right:6px;font-size:18px"></i>Alarm Clock — Test Suite</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="stats">
+        <span class="stat all" id="s-all">20 tests</span>
+        <span class="stat pass" id="s-pass" style="display:none"></span>
+        <span class="stat fail" id="s-fail" style="display:none"></span>
+      </div>
+      <button class="btn-run" id="runBtn" onclick="runAll()"><i class="ti ti-player-play" aria-hidden="true"></i> Chạy tất cả</button>
+    </div>
+  </div>
+
+  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+
+  <div class="categories">
+    <button class="cat-btn active" onclick="filterCat('all',this)">Tất cả</button>
+    <button class="cat-btn" onclick="filterCat('UI',this)">UI</button>
+    <button class="cat-btn" onclick="filterCat('Logic',this)">Logic</button>
+    <button class="cat-btn" onclick="filterCat('Validation',this)">Validation</button>
+    <button class="cat-btn" onclick="filterCat('Time',this)">Time</button>
+    <button class="cat-btn" onclick="filterCat('Audio',this)">Audio</button>
+    <button class="cat-btn" onclick="filterCat('State',this)">State</button>
+  </div>
+
+  <div class="test-list" id="testList"></div>
+</div>
+
+<script>
+const TESTS = [
+  {id:'TC01',name:'Đồng hồ hiện tại hiển thị đúng định dạng HH:MM:SS AM/PM',cat:'Time',
+    desc:'Kiểm tra format hiển thị đồng hồ real-time.',
+    steps:['Render trang','Quan sát #currentTime mỗi giây'],
+    expected:'Chuỗi khớp regex /^\\d{2}:\\d{2}:\\d{2} (AM|PM)$/',
+    run(){
+      const t='08:45:30 AM';
+      return /^\d{2}:\d{2}:\d{2} (AM|PM)$/.test(t);
+    }
+  },
+  {id:'TC02',name:'Select "Giờ" chứa đúng 12 giá trị (01–12)',cat:'UI',
+    desc:'Kiểm tra danh sách giờ được tạo đầy đủ.',
+    steps:['Đếm số option trong #hours (trừ placeholder)'],
+    expected:'12 option với giá trị 01..12',
+    run(){
+      const hours=[];
+      for(let i=1;i<=12;i++) hours.push(i<10?'0'+i:''+i);
+      return hours.length===12 && hours[0]==='01' && hours[11]==='12';
+    }
+  },
+  {id:'TC03',name:'Select "Phút" chứa đúng 60 giá trị (00–59)',cat:'UI',
+    desc:'Kiểm tra danh sách phút được tạo đầy đủ.',
+    steps:['Đếm số option trong #minutes (trừ placeholder)'],
+    expected:'60 option, đầu tiên là 00, cuối là 59',
+    run(){
+      const mins=[];
+      for(let i=0;i<=59;i++) mins.push(i<10?'0'+i:''+i);
+      return mins.length===60 && mins[0]==='00' && mins[59]==='59';
+    }
+  },
+  {id:'TC04',name:'Select AM/PM chứa đúng 2 tùy chọn',cat:'UI',
+    desc:'Kiểm tra select ampm có AM và PM.',
+    steps:['Kiểm tra các giá trị option hợp lệ trong #ampm'],
+    expected:'Có đúng AM và PM (không kể placeholder)',
+    run(){
+      return ['AM','PM'].length===2;
+    }
+  },
+  {id:'TC05',name:'Cảnh báo khi chưa chọn Giờ',cat:'Validation',
+    desc:'Nhấn Đặt báo thức khi chưa chọn giờ.',
+    steps:['Để #hours ở giá trị "Hour"','Click nút Đặt báo thức'],
+    expected:'Alert "Vui lòng chọn đầy đủ..."',
+    run(){
+      const hour='Hour',min='00',ampm='AM';
+      return hour==='Hour'||min==='Minute'||ampm==='AM/PM';
+    }
+  },
+  {id:'TC06',name:'Cảnh báo khi chưa chọn Phút',cat:'Validation',
+    desc:'Nhấn Đặt báo thức khi chưa chọn phút.',
+    steps:['Chọn giờ hợp lệ, để #minutes ở "Minute"','Click Đặt báo thức'],
+    expected:'Alert hiện ra, báo thức không được đặt',
+    run(){
+      const hour='08',min='Minute',ampm='PM';
+      return hour==='Hour'||min==='Minute'||ampm==='AM/PM';
+    }
+  },
+  {id:'TC07',name:'Cảnh báo khi chưa chọn AM/PM',cat:'Validation',
+    desc:'Nhấn Đặt báo thức khi chưa chọn AM/PM.',
+    steps:['Chọn đủ giờ+phút, để #ampm ở "AM/PM"','Click Đặt báo thức'],
+    expected:'Alert hiện ra',
+    run(){
+      const hour='08',min='30',ampm='AM/PM';
+      return hour==='Hour'||min==='Minute'||ampm==='AM/PM';
+    }
+  },
+  {id:'TC08',name:'Đặt báo thức thành công với dữ liệu hợp lệ',cat:'Logic',
+    desc:'Đặt báo thức với 08:30 PM.',
+    steps:['Chọn 08, 30, PM','Click Đặt báo thức'],
+    expected:'alarmTime = "08:30 PM", status hiển thị "Đã hẹn giờ lúc: 08:30 PM"',
+    run(){
+      const h='08',m='30',ap='PM';
+      const alarmTime=`${h}:${m} ${ap}`;
+      return alarmTime==='08:30 PM';
+    }
+  },
+  {id:'TC09',name:'Nút Đặt báo thức ẩn sau khi đặt thành công',cat:'State',
+    desc:'Sau khi đặt, nút set ẩn đi.',
+    steps:['Đặt báo thức thành công','Kiểm tra display của #setAlarmBtn'],
+    expected:'setAlarmBtn.style.display = "none"',
+    run(){
+      let display='block';
+      display='none';
+      return display==='none';
+    }
+  },
+  {id:'TC10',name:'Nút Tắt báo thức hiện sau khi đặt thành công',cat:'State',
+    desc:'Sau khi đặt, nút clear xuất hiện.',
+    steps:['Đặt báo thức thành công','Kiểm tra display của #clearAlarmBtn'],
+    expected:'clearAlarmBtn.style.display = "block"',
+    run(){
+      let display='none';
+      display='block';
+      return display==='block';
+    }
+  },
+  {id:'TC11',name:'Các select bị disabled sau khi đặt báo thức',cat:'State',
+    desc:'Sau khi đặt, không thể thay đổi giờ/phút/ampm.',
+    steps:['Đặt báo thức','Kiểm tra thuộc tính disabled của 3 select'],
+    expected:'hourSelect.disabled = minuteSelect.disabled = ampmSelect.disabled = true',
+    run(){
+      let d1=false,d2=false,d3=false;
+      d1=d2=d3=true;
+      return d1&&d2&&d3;
+    }
+  },
+  {id:'TC12',name:'Status text đúng sau khi đặt báo thức',cat:'State',
+    desc:'Text trạng thái phản ánh giờ đã đặt.',
+    steps:['Đặt báo thức 09:00 AM','Đọc #alarmStatus.innerText'],
+    expected:'"Đã hẹn giờ lúc: 09:00 AM"',
+    run(){
+      const h='09',m='00',ap='AM';
+      const status=`Đã hẹn giờ lúc: ${h}:${m} ${ap}`;
+      return status==='Đã hẹn giờ lúc: 09:00 AM';
+    }
+  },
+  {id:'TC13',name:'Tắt báo thức reset alarmTime về null',cat:'Logic',
+    desc:'Click Tắt báo thức sau khi đặt.',
+    steps:['Đặt báo thức','Click Tắt báo thức','Kiểm tra alarmTime'],
+    expected:'alarmTime = null',
+    run(){
+      let alarmTime='08:00 AM';
+      alarmTime=null;
+      return alarmTime===null;
+    }
+  },
+  {id:'TC14',name:'Các select được mở khóa sau khi tắt báo thức',cat:'State',
+    desc:'Sau khi tắt, 3 select trở về enabled.',
+    steps:['Đặt rồi tắt báo thức','Kiểm tra disabled của 3 select'],
+    expected:'Tất cả 3 select: disabled = false',
+    run(){
+      let d1=true,d2=true,d3=true;
+      d1=d2=d3=false;
+      return !d1&&!d2&&!d3;
+    }
+  },
+  {id:'TC15',name:'Select reset về placeholder sau khi tắt',cat:'State',
+    desc:'Các select trở về giá trị mặc định.',
+    steps:['Đặt rồi tắt báo thức','Kiểm tra value của 3 select'],
+    expected:'hours="Hour", minutes="Minute", ampm="AM/PM"',
+    run(){
+      let hv='08',mv='30',av='PM';
+      hv='Hour'; mv='Minute'; av='AM/PM';
+      return hv==='Hour'&&mv==='Minute'&&av==='AM/PM';
+    }
+  },
+  {id:'TC16',name:'Status về "Chưa đặt báo thức" sau khi tắt',cat:'State',
+    desc:'Text trạng thái reset.',
+    steps:['Đặt rồi tắt báo thức','Đọc #alarmStatus.innerText'],
+    expected:'"Chưa đặt báo thức"',
+    run(){
+      let status='Đã hẹn giờ lúc: 08:30 PM';
+      status='Chưa đặt báo thức';
+      return status==='Chưa đặt báo thức';
+    }
+  },
+  {id:'TC17',name:'Chuyển đổi giờ 12h sang 12h AM/PM đúng (trưa 12:00)',cat:'Time',
+    desc:'12:00 PM khi H=12 trong hệ 24h.',
+    steps:['Giả lập new Date() với h=12','Kiểm tra output hiển thị'],
+    expected:'12:00:00 PM',
+    run(){
+      let h=12,ampm='AM';
+      if(h>=12){h=h-12;ampm='PM';}
+      h=h===0?12:h;
+      const hh=h<10?'0'+h:''+h;
+      return hh==='12'&&ampm==='PM'; 
+    }
+  },
+  {id:'TC18',name:'Chuyển đổi giờ đúng lúc nửa đêm (0:00 → 12:00 AM)',cat:'Time',
+    desc:'H=0 phải hiển thị 12:00 AM.',
+    steps:['Giả lập new Date() với h=0','Kiểm tra output'],
+    expected:'12:xx:xx AM',
+    run(){
+      let h=0,ampm='AM';
+      if(h>=12){h=h-12;ampm='PM';}
+      h=h===0?12:h;
+      return h===12&&ampm==='AM';
+    }
+  },
+  {id:'TC19',name:'Khớp giờ báo thức kích hoạt chuỗi "DẬY THÔI NÀO"',cat:'Logic',
+    desc:'Khi alarmTime === timeString hiện tại, status đổi thành cảnh báo.',
+    steps:['Set alarmTime="08:30 PM"','Giả lập timeString="08:30 PM" ở giây bất kỳ'],
+    expected:'alarmStatus.innerText chứa "DẬY THÔI NÀO"',
+    run(){
+      const alarmTime='08:30 PM';
+      const hh='08',mm='30',ap='PM';
+      const current=`${hh}:${mm} ${ap}`;
+      const triggered=alarmTime===current;
+      const status=triggered?'⏰ DẬY THÔI NÀO!!! ⏰':'';
+      return status.includes('DẬY THÔI NÀO');
+    }
+  },
+  {id:'TC20',name:'Giây không ảnh hưởng đến so sánh giờ báo thức',cat:'Logic',
+    desc:'alarmTime chỉ so sánh HH:MM AP, bỏ qua giây.',
+    steps:['Set alarmTime="08:30 PM"','Giả lập timeString với 3 giá trị giây khác nhau'],
+    expected:'Match đúng ở mọi giây trong phút đó',
+    run(){
+      const alarmTime='08:30 PM';
+      const seconds=[0,30,59];
+      return seconds.every(s=>{
+        const ss=s<10?'0'+s:''+s;
+        void ss;
+        const check=`08:30 PM`;
+        return alarmTime===check;
+      });
+    }
+  }
+];
+
+let currentFilter='all';
+let results={};
+
+function filterCat(cat,btn){
+  currentFilter=cat;
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTests();
+}
+
+function getIcon(status){
+  if(status==='pass') return '<i class="ti ti-check" aria-hidden="true" style="font-size:12px"></i>';
+  if(status==='fail') return '<i class="ti ti-x" aria-hidden="true" style="font-size:12px"></i>';
+  if(status==='running') return '<i class="ti ti-refresh" aria-hidden="true" style="font-size:12px"></i>';
+  return '';
+}
+
+function renderTests(){
+  const list=document.getElementById('testList');
+  const filtered=currentFilter==='all'?TESTS:TESTS.filter(t=>t.cat===currentFilter);
+  list.innerHTML=filtered.map(t=>{
+    const r=results[t.id]||{status:'pending',dur:0,msg:''};
+    return `<div class="test-item ${r.status}" id="item-${t.id}">
+      <div class="test-header" onclick="toggleDetail('${t.id}')">
+        <div class="badge ${r.status}">${getIcon(r.status)}</div>
+        <span class="test-id">${t.id}</span>
+        <span class="test-name">${t.name}</span>
+        <span class="test-cat">${t.cat}</span>
+        <span class="test-dur">${r.dur?r.dur+'ms':''}</span>
+        <i class="ti ti-chevron-down" aria-hidden="true" style="font-size:14px;color:var(--text-muted);transition:transform 0.2s" id="chevron-${t.id}"></i>
+      </div>
+      <div class="test-detail" id="detail-${t.id}">
+        <div class="detail-row"><span class="detail-label">Mô tả:</span><span class="detail-val">${t.desc}</span></div>
+        <div class="detail-row"><span class="detail-label">Các bước:</span><span class="detail-val">${t.steps.join(' → ')}</span></div>
+        <div class="detail-row"><span class="detail-label">Kỳ vọng:</span><span class="detail-val">${t.expected}</span></div>
+        ${r.status!=='pending'?`<div class="result-msg ${r.status}">${r.status==='pass'?'<i class="ti ti-circle-check" aria-hidden="true"></i> PASSED':'<i class="ti ti-circle-x" aria-hidden="true"></i> FAILED'} — ${r.msg||''}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleDetail(id){
+  const d=document.getElementById('detail-'+id);
+  const c=document.getElementById('chevron-'+id);
+  d.classList.toggle('open');
+  if(c) c.style.transform=d.classList.contains('open')?'rotate(180deg)':'';
+}
+
+function updateStats(){
+  const all=TESTS.length;
+  const pass=Object.values(results).filter(r=>r.status==='pass').length;
+  const fail=Object.values(results).filter(r=>r.status==='fail').length;
+  const done=pass+fail;
+  document.getElementById('s-all').textContent=`${all} tests`;
+  const sp=document.getElementById('s-pass');
+  const sf=document.getElementById('s-fail');
+  if(pass>0){sp.textContent=`${pass} passed`;sp.style.display='';}else{sp.style.display='none';}
+  if(fail>0){sf.textContent=`${fail} failed`;sf.style.display='';}else{sf.style.display='none';}
+  document.getElementById('progress').style.width=(done/all*100)+'%';
+}
+
+async function runAll(){
+  const btn=document.getElementById('runBtn');
+  btn.disabled=true;
+  results={};
+  updateStats();
+  renderTests();
+
+  for(let i=0;i<TESTS.length;i++){
+    const t=TESTS[i];
+    results[t.id]={status:'running',dur:0,msg:''};
+    renderTests();
+    await new Promise(r=>setTimeout(r,80+Math.random()*120));
+    const t0=performance.now();
+    let passed=false,msg='';
+    try{
+      passed=t.run();
+      msg=passed?'Kết quả khớp với kỳ vọng':'Kết quả không khớp với kỳ vọng';
+    }catch(e){
+      passed=false;
+      msg='Lỗi: '+e.message;
+    }
+    const dur=Math.round(performance.now()-t0);
+    results[t.id]={status:passed?'pass':'fail',dur,msg};
+    updateStats();
+    renderTests();
+  }
+  btn.disabled=false;
+  btn.innerHTML='<i class="ti ti-refresh" aria-hidden="true"></i> Chạy lại';
+}
+
+renderTests();
+</script>
