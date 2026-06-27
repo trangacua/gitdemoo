@@ -323,14 +323,12 @@ function renderTests(){
     </div>`;
   }).join('');
 }
-
 function toggleDetail(id){
   const d=document.getElementById('detail-'+id);
   const c=document.getElementById('chevron-'+id);
   d.classList.toggle('open');
   if(c) c.style.transform=d.classList.contains('open')?'rotate(180deg)':'';
 }
-
 function updateStats(){
   const all=TESTS.length;
   const pass=Object.values(results).filter(r=>r.status==='pass').length;
@@ -343,14 +341,12 @@ function updateStats(){
   if(fail>0){sf.textContent=`${fail} failed`;sf.style.display='';}else{sf.style.display='none';}
   document.getElementById('progress').style.width=(done/all*100)+'%';
 }
-
 async function runAll(){
   const btn=document.getElementById('runBtn');
   btn.disabled=true;
   results={};
   updateStats();
   renderTests();
-
   for(let i=0;i<TESTS.length;i++){
     const t=TESTS[i];
     results[t.id]={status:'running',dur:0,msg:''};
@@ -373,6 +369,5 @@ async function runAll(){
   btn.disabled=false;
   btn.innerHTML='<i class="ti ti-refresh" aria-hidden="true"></i> Chạy lại';
 }
-
 renderTests();
 </script>
